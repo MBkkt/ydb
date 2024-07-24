@@ -1,5 +1,7 @@
 #include "event_pb.h"
 
+#include <google/protobuf/io/coded_stream.h>
+
 namespace NActors {
     bool TRopeStream::Next(const void** data, int* size) {
         *data = Iter.ContiguousData();
@@ -222,15 +224,6 @@ namespace NActors {
         return true;
     }
 
-    size_t SerializeNumber(size_t num, char *buffer) {
-        char *begin = buffer;
-        do {
-            *buffer++ = (num & 0x7F) | (num >= 128 ? 0x80 : 0x00);
-            num >>= 7;
-        } while (num);
-        return buffer - begin;
-    }
-
     size_t DeserializeNumber(TRope::TConstIterator& iter, ui64& size) {
         size_t res = 0;
         size_t offset = 0;
@@ -253,30 +246,35 @@ namespace NActors {
     bool SerializeToArcadiaStreamImpl(TChunkSerializer* chunker, const TVector<TRope> &payload) {
         // serialize payload first
         if (payload) {
-            void *data;
+            void* data = nullptr;
             int size = 0;
-            auto append = [&](const char *p, size_t len) {
-                while (len) {
-                    if (size) {
-                        const size_t numBytesToCopy = std::min<size_t>(size, len);
+            auto append = [&](const auto* p, int len) {
+                do {
+                    if (Y_LIKELY(size)) {
+                        const auto numBytesToCopy = std::min(size, len);
                         memcpy(data, p, numBytesToCopy);
                         data = static_cast<char*>(data) + numBytesToCopy;
                         size -= numBytesToCopy;
-                        p += numBytesToCopy;
                         len -= numBytesToCopy;
-                    } else if (!chunker->Next(&data, &size)) {
-                        return false;
+                        if (Y_LIKELY(len == 0)) {
+                            return true;
+                        }
+                        p += numBytesToCopy;
                     }
-                }
-                return true;
-            };
-            auto appendNumber = [&](size_t number) {
-                char buf[MaxNumberBytes];
-                return append(buf, SerializeNumber(number, buf));
+                } while (chunker->Next(&data, &size));
+                return false;
             };
 
-            char marker = ExtendedPayloadMarker;
-            append(&marker, 1);
+            if (!append(&ExtendedPayloadMarker, 1)) {
+                return false;
+            }
+
+            ui8 buf[MaxNumberBytes];
+            auto appendNumber = [&](auto number) {
+                auto len = google::protobuf::io::CodedOutputStream::WriteVarint64ToArray(number, buf) - buf;
+                return append(buf, len);
+            };
+
             if (!appendNumber(payload.size())) {
                 return false;
             }
@@ -350,14 +348,13 @@ namespace NActors {
     ui32 CalculateSerializedSizeImpl(const TVector<TRope> &payload, ssize_t recordSize) {
         ssize_t result = recordSize;
         if (result >= 0 && payload) {
-            ++result; // marker
-            char buf[MaxNumberBytes];
-            result += SerializeNumber(payload.size(), buf);
+            // marker + size
+            result += google::protobuf::io::CodedOutputStream::VarintSize64PlusOne(payload.size());
             size_t totalPayloadSize = 0;
             for (const TRope& rope : payload) {
                 size_t ropeSize = rope.GetSize();
                 totalPayloadSize += ropeSize;
-                result += SerializeNumber(ropeSize, buf);
+                result += google::protobuf::io::CodedOutputStream::VarintSize64(ropeSize);
             }
             result += totalPayloadSize;
         }
@@ -370,10 +367,10 @@ namespace NActors {
 
             if (allowExternalDataChannel) {
                 if (payload) {
-                    char temp[MaxNumberBytes];
-                    size_t headerLen = 1 + SerializeNumber(payload.size(), temp);
+                    // marker + size
+                    size_t headerLen = google::protobuf::io::CodedOutputStream::VarintSize64PlusOne(payload.size());
                     for (const TRope& rope : payload) {
-                        headerLen += SerializeNumber(rope.size(), temp);
+                        headerLen += google::protobuf::io::CodedOutputStream::VarintSize64(rope.size());
                     }
                     info.Sections.push_back(TEventSectionInfo{0, headerLen, 0, 0, true});
                     for (const TRope& rope : payload) {
