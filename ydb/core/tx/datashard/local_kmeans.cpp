@@ -58,12 +58,12 @@ TTableRange CreateRangeFrom(const TUserTable& table, ui32 parent, std::vector<TC
         return table.GetTableRange();
     }
     // TODO(mbkkt) unfortunately it doesn't work, but it should, seems like a bug, for some reason Seek to {some, inf} doesn't find anything
-    // from = TCell::Make(parent - 1);
-    // to = TCell::Make(parent);
-    // TTableRange range{{&to, 1}, false, {&to, 1}, true};
-    cells.resize(table.KeyColumnTypes.size());
-    cells[0] = TCell::Make(parent);
-    TTableRange range{cells, true, {&cells[0], 1}, true};
+    cells.resize(2);
+    cells[0] = TCell::Make(parent - 1);
+    cells[1] = TCell::Make(parent);
+    TTableRange range{{&cells[0], 1}, false, {&cells[1], 1}, true};
+    // cells[0] = TCell::Make(parent);
+    // TTableRange range{cells, true, {&cells[0], 1}, true};
     return Intersect(table.KeyColumnTypes, range, table.GetTableRange());
 }
 
