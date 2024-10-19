@@ -130,11 +130,11 @@ struct TJsonIndex {
     TStack<ui32> ContainerIndex;
     TVector<TContainer> Containers;
 
-    TMap<TString, ui32> Keys;
+    TMap<std::string, ui32> Keys;
     ui32 TotalKeyLength = 0;
     ui32 TotalKeysCount = 0;
 
-    THashMap<TString, ui32> Strings;
+    THashMap<std::string, ui32> Strings;
     ui32 LastFreeStringIndex = 0;
     ui32 TotalStringLength = 0;
 
