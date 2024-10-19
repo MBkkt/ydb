@@ -77,7 +77,7 @@ struct TContainer {
  * container index instead. This is exactly how containers are stored in serialized BinaryJson (but with offsets instead of indices)
  */
 struct TJsonIndex {
-    ui32 InternKey(const TStringBuf value) {
+    ui32 InternKey(std::string_view value) {
         TotalKeysCount++;
 
         const auto [it, emplaced] = Keys.emplace(value, LastFreeStringIndex);
@@ -88,7 +88,7 @@ struct TJsonIndex {
         return it->second;
     }
 
-    ui32 InternString(const TStringBuf value) {
+    ui32 InternString(std::string_view value) {
         const auto [it, emplaced] = Strings.emplace(value, LastFreeStringIndex);
         if (emplaced) {
             ++LastFreeStringIndex;
