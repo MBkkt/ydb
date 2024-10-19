@@ -6,6 +6,7 @@
 #include <contrib/libs/simdjson/include/simdjson/dom/object-inl.h>
 #include <contrib/libs/simdjson/include/simdjson/dom/parser-inl.h>
 #include <contrib/libs/simdjson/include/simdjson/ondemand.h>
+#include <library/cpp/containers/absl_flat_hash/flat_hash_map.h>
 #include <library/cpp/json/json_reader.h>
 
 #include <util/generic/vector.h>
@@ -134,7 +135,7 @@ struct TJsonIndex {
     ui32 TotalKeyLength = 0;
     ui32 TotalKeysCount = 0;
 
-    THashMap<std::string, ui32> Strings;
+    absl::flat_hash_map<std::string, ui32> Strings;
     ui32 LastFreeStringIndex = 0;
     ui32 TotalStringLength = 0;
 
