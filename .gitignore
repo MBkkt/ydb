@@ -37,6 +37,8 @@ __pycache__/
 # clangd cache
 /.cache
 
+.clang-format
+
 /compile_commands.json
 
 /build_*
