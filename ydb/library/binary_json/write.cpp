@@ -139,7 +139,7 @@ struct TJsonIndex {
     ui32 LastFreeStringIndex = 0;
     ui32 TotalStringLength = 0;
 
-    THashMap<double, ui32> Numbers;
+    absl::flat_hash_map<double, ui32> Numbers;
     ui32 LastFreeNumberIndex = 0;
 
     ui32 TotalEntriesCount = 0;
